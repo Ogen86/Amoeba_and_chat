@@ -17,11 +17,6 @@ public class GameNET implements Runnable {
 	private PrintWriter writer;
 	private String username;
 	
-	
-	public GameNET(String user) {
-		this.username = user;
-	}
-	
 	public void connect() throws Exception {
 		try {
 			sock = new Socket(InetAddress.getLocalHost(), SOCKET);
@@ -86,6 +81,12 @@ public class GameNET implements Runnable {
 	
 	public void sendChat(String msg) {
 		sendToServer("C;" + username + ";" + msg);
+	}
+	
+	
+	public void logIn(String username) {
+		this.username = username;
+		sendToServer("J;" + username);
 	}
 	
 }

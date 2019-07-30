@@ -7,6 +7,7 @@ import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 
@@ -23,11 +24,18 @@ public class GameController implements Initializable{
 	@FXML
 	TextField tfUzenet;
 	
+	@FXML
+	Label lblStep;
+	
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
 		// ez akkor fut, amikor megnyomják a gombot
 		btnGomb.setOnAction(e -> {
-			sendChatMessage();
+			try {
+				gnet.connect();
+			} catch (Exception exc) {
+				lblStep.setText(exc.getMessage());
+			}
 		});
 		
 		// ez akkor fut, amikor ENTER-t ütnek a beviteli mezõn
@@ -42,7 +50,7 @@ public class GameController implements Initializable{
 	 *  *******************************************/
 	private void sendChatMessage() {
 		synchronized (gnet) {
-			gnet.setMessage(tfUzenet.getText());
+			//gnet.setMessage(tfUzenet.getText());
 		}
 		tfUzenet.clear();
 	}
@@ -57,7 +65,7 @@ public class GameController implements Initializable{
 			@Override
 			public void run() {
 				synchronized (gnet) {
-					while (gnet.isDoit()) {
+					while (true) {
 						try {
 								gnet.wait();
 							}
@@ -69,27 +77,24 @@ public class GameController implements Initializable{
 							
 							@Override
 							public void run() {
-								/***********************************************************
-								 * itt kell lekezelni a szervertõl kapott üzenetet
-								 * és kirajzolni a köröket és X-eket
-								 * meg kiírni a chat szövegeket
-								 * *************************************************************/
-								taSzoveg.appendText(gnet.getMessage() + "\n"); // ehelyett kell majd az, hogy
-								/*************************************************************************
-								String[] valami = gnet.getMessage().split(";");
-								switch (valami[0]) {
-								case "C":
-									ez egy chat üzenet és ki kell írni
-									break;
-									... stb. stb .stb.
-								default:
-									break;
+								while (gnet.hasNextMessage()) {
+									String[] valami = gnet.getMessage().split(";");
+									switch (valami[0]) {
+									case "C":
+										taSzoveg.appendText(valami[1] + ": " + valami[2] + "\n"); // ehelyett kell majd az, hogy
+										break;
+									default:
+										String tmp = "";
+										for (String string : valami) {
+											tmp += string;
+										}
+										lblStep.setText(tmp);
+										break;
+									}
 								}
-								*****************************************************************************/
 							}
 						});
 					}  //while (gnet.isDoit())
-					System.out.println("vége a játéknak!!!");
 				}  //synchronized
 			}  //run()
 		}); //Thread-Runnable
