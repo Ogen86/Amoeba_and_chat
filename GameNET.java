@@ -1,53 +1,91 @@
 package application;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.InetAddress;
+import java.net.Socket;
+import java.util.ArrayList;
+
 public class GameNET implements Runnable {
 	
-	private String message = null;
-	private boolean doit = true;
+	private final int SOCKET = 10001;
+	private ArrayList<String> messages = new ArrayList<>();
+	private Socket sock;
+	private BufferedReader reader;
+	private PrintWriter writer;
+	private String username;
 	
-	public GameNET() {
-		Thread th = new Thread(this);
-		th.setDaemon(true);
-		th.start();
+	
+	public GameNET(String user) {
+		this.username = user;
+	}
+	
+	public void connect() throws Exception {
+		try {
+			sock = new Socket(InetAddress.getLocalHost(), SOCKET);
+			reader = new BufferedReader(new InputStreamReader(sock.getInputStream()));
+			writer = new PrintWriter(sock.getOutputStream(), true);
+			Thread th = new Thread(this);
+			th.setDaemon(true);
+			th.start();
+		} catch (IOException e) {
+			throw new Exception("Csatlakozási hiba:\n" + e.getMessage());
+		}
 	}
 
 	@Override
 	public void run() {
-		Integer counter = 0;
-		while (true) {
+		boolean run = true;
+		while (run) {
 			try {
-				// itt fogja olvasgatni a szerver üzeneteit és értesít, ha talált
-				Thread.sleep(2000);
-				counter++;
-				message = counter.toString() + ". szerverüzenet";
-				if (counter == 10) {
-					doit = false;
-				}
+				String msg = reader.readLine();
 				synchronized (this) {
+					storeMessage(msg);
 					this.notifyAll();
 				}
 			}
-			catch (InterruptedException e) {
-				e.printStackTrace();
+			catch (IOException e) {
+				System.out.println(e.getMessage());
+				run = false;
 			}
 		}
+		closeConnections();
+	}
+	
+	private void closeConnections() {
+		try {
+			writer.close();
+			reader.close();
+			sock.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+	}
+	
+	public boolean hasNextMessage() {
+		return messages.size() > 0;
 	}
 	
 	public String getMessage() {
-		return message;
+		String str = messages.get(messages.size() - 1);
+		messages.remove(messages.size() - 1);
+		return str;
 	}
 	
-	public void setMessage(String str) {
-		synchronized (this) {
-			message = str;
-			System.out.println(message);
-			message = null;
-		}
+	private void storeMessage(String msg) {
+		messages.add(0, msg);
 	}
-
-	public boolean isDoit() {
-		return doit;
+	
+	private void sendToServer(String msg) {
+		writer.println(msg);
+		writer.flush();
 	}
-
+	
+	public void sendChat(String msg) {
+		sendToServer("C;" + username + ";" + msg);
+	}
 	
 }
