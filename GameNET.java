@@ -7,6 +7,7 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.util.ArrayList;
+import static application.Constants.*;
 
 public class GameNET implements Runnable {
 	
@@ -16,6 +17,7 @@ public class GameNET implements Runnable {
 	private BufferedReader reader;
 	private PrintWriter writer;
 	private String username;
+	boolean[][] steps = new boolean[20][20];
 	
 	public void connect() throws Exception {
 		try {
@@ -60,10 +62,23 @@ public class GameNET implements Runnable {
 		
 	}
 	
-	public boolean hasNextMessage() {
+	public boolean hasMessage() {
 		return messages.size() > 0;
 	}
 	
+	public GameNET() {
+		clearSteps();
+	}
+	
+	private void clearSteps() {
+		for (int i = 0; i < 20; i++) {
+			for (int j = 0; j < 20; j++) {
+				steps[i][j] = false;
+			}
+		}
+		
+	}
+
 	public String getMessage() {
 		String str = messages.get(messages.size() - 1);
 		messages.remove(messages.size() - 1);
@@ -79,14 +94,47 @@ public class GameNET implements Runnable {
 		writer.flush();
 	}
 	
-	public void sendChat(String msg) {
-		sendToServer("C;" + username + ";" + msg);
+	
+	// belépés a szerverre a megadot névvel (a kapcsolat már megvan)
+	
+	public void logIn(String name) {
+		this.username = name;
+		sendToServer(JOIN + ";" + username);
 	}
 	
+	//meghívás játékra: name = akit meghívtak
+	public void playWith(String name) {
+		sendToServer(PLAY + ";" + username);
+	}
 	
-	public void logIn(String username) {
-		this.username = username;
-		sendToServer("J;" + username);
+	//meghívás elfogadása
+	public void acceptPlay(String name) {
+		sendToServer(ACCEPT + ";" + username);
+	}
+	
+	//meghívás elutasítása
+	public void declinePlay(String name) {
+		sendToServer(DECLINE + ";" + username);
+	}
+	
+	//lépés
+	public void stepTo(Integer x, Integer y) {
+		if (steps[x][y] == false) {
+			sendToServer(STEP + ";" + x.toString() + y.toString());
+		}
+	}
+	
+	public void registerStep(int x, int y) {
+		steps[x][y] = true;
+	}
+	
+	public void sendChat(String msg) {
+		sendToServer(CHAT + username + ";" + msg);
+	}
+	
+	//játék abbahagyása
+	public void breakGame() {
+		sendToServer(BREAK);
 	}
 	
 }
