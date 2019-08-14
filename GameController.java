@@ -40,19 +40,9 @@ public class GameController implements Initializable{
 		
 		// ez akkor fut, amikor ENTER-t ütnek a beviteli mezõn
 		tfUzenet.setOnAction(e -> {
-			sendChatMessage();
+			gnet.sendChat(tfUzenet.getText());
 		});
 		
-	}
-	
-	/**********************************************
-	 *  Ez az eljárás küldi el a chat üzenetet 
-	 *  *******************************************/
-	private void sendChatMessage() {
-		synchronized (gnet) {
-			//gnet.setMessage(tfUzenet.getText());
-		}
-		tfUzenet.clear();
 	}
 	
 	public void setGnet(GameNET gnet) {
@@ -77,7 +67,7 @@ public class GameController implements Initializable{
 							
 							@Override
 							public void run() {
-								while (gnet.hasNextMessage()) {
+								while (gnet.hasMessage()) {
 									String[] valami = gnet.getMessage().split(";");
 									switch (valami[0]) {
 									case "C":

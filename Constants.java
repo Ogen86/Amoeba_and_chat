@@ -12,4 +12,5 @@ public final  class Constants {
 	public static final String CHAT    = "C";
 	public static final String WIN     = "W";
 	public static final String BREAK   = "B";
+	public static final int SOCKET = 10001;
 }

@@ -11,12 +11,12 @@ import static application.Constants.*;
 
 public class GameNET implements Runnable {
 	
-	private final int SOCKET = 10001;
 	private ArrayList<String> messages = new ArrayList<>();
 	private Socket sock;
 	private BufferedReader reader;
 	private PrintWriter writer;
 	private String username;
+	private boolean meNext = true;
 	boolean[][] steps = new boolean[20][20];
 	
 	public void connect() throws Exception {
@@ -87,6 +87,10 @@ public class GameNET implements Runnable {
 	
 	private void storeMessage(String msg) {
 		messages.add(0, msg);
+		String[] tmp = msg.split(";");
+		if (tmp[0]  == STEP) {
+			meNext = !tmp[1].equals(username);  //ha a lépõ neve nem egyenlõ a saját névvel, akkor az
+		}										//ellenfél lépett, tehát én jövök	
 	}
 	
 	private void sendToServer(String msg) {
@@ -119,7 +123,7 @@ public class GameNET implements Runnable {
 	
 	//lépés
 	public void stepTo(Integer x, Integer y) {
-		if (steps[x][y] == false) {
+		if ((meNext) && (steps[x][y] == false)) {  //ha én lépek és nem foglalt a mezõ, akkor küldi el a lépést
 			sendToServer(STEP + ";" + x.toString() + y.toString());
 		}
 	}
