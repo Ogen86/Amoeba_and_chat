@@ -4,7 +4,6 @@ public final  class Constants {
 	
 	public static final String JOIN    = "J";
 	public static final String LIST    = "L";
-	public static final String GET     = "G";
 	public static final String PLAY    = "P";
 	public static final String ACCEPT  = "A";
 	public static final String DECLINE = "D";
@@ -13,4 +12,7 @@ public final  class Constants {
 	public static final String WIN     = "W";
 	public static final String BREAK   = "B";
 	public static final int SOCKET = 10001;
+	
+	public static int BSIZE = 20;
+	public static int BMAX = BSIZE - 1;
 }

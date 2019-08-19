@@ -17,7 +17,7 @@ public class GameNET implements Runnable {
 	private PrintWriter writer;
 	private String username;
 	private boolean meNext = true;
-	boolean[][] steps = new boolean[20][20];
+	String[][] steps = new String[BSIZE][BSIZE];
 	
 	public void connect() throws Exception {
 		try {
@@ -71,9 +71,9 @@ public class GameNET implements Runnable {
 	}
 	
 	private void clearSteps() {
-		for (int i = 0; i < 20; i++) {
-			for (int j = 0; j < 20; j++) {
-				steps[i][j] = false;
+		for (int i = 0; i <= BMAX; i++) {
+			for (int j = 0; j <= BMAX; j++) {
+				steps[i][j] = "";
 			}
 		}
 		
@@ -89,8 +89,108 @@ public class GameNET implements Runnable {
 		messages.add(0, msg);
 		String[] tmp = msg.split(";");
 		if (tmp[0]  == STEP) {
-			meNext = !tmp[1].equals(username);  //ha a lépõ neve nem egyenlõ a saját névvel, akkor az
-		}										//ellenfél lépett, tehát én jövök	
+			int x = Integer.parseInt(tmp[2]);
+			int y = Integer.parseInt(tmp[3]);
+			steps[x][y] = tmp[1];                //az x,y -dik elem a lépõ neve
+			if (tmp[1] == username) {            //ha saját lépés volt, akkor ellenõrizni kell a gyõzelmet
+				checkWinner(x, y);				 //ha saját gyõzelem, akkor elküldi a szervernek
+			}
+			meNext = !tmp[1].equals(username);   //ha a lépõ neve nem egyenlõ a saját névvel, akkor az
+		}										 //ellenfél lépett, tehát én jövök	
+	}
+	
+	private void checkWinner(int x, int y) {
+		if (horizFive(x, y) || vertFive(x, y) || upDownFive(x, y) || downUpFive(x, y)) {
+			sendToServer(WIN + ";" + username); 
+		}
+	}
+	
+	//sor ellenõrzése
+	private boolean horizFive(int x, int y) {
+		int ctr = 0;
+		for (int i = -4; i <= 4; i++) {
+			if (((x + i) >= 0) && ((x + i) <= BMAX)) {    //ha a pályán van a vizsgált mezõ 
+				if (steps[x + i][y].equals(username)) {   //ha saját lépés
+					ctr += 1;                             //akkor eggyel több saját mezõ van abban a sorban
+					if (ctr == 5) {
+						return true;                      //ha talált 5-öt, akkor leáll
+					}
+				}	
+				else {                                    //ha nem saját lépés (vagy üres), akkor nullázni kell a számlálót
+					ctr = 0;
+					if (i >= 0) {                         //a most vizsgált mezõ nem saját, tehát 
+						return false;                     //már csak max 4 foglalt lehet, nem érdemes tovább számolni
+					}
+				}
+			}
+		}
+		return false;
+	}
+	
+	//oszlop ellenõrzése
+	private boolean vertFive(int x, int y) {
+		int ctr = 0;
+		for (int i = -4; i <= 4; i++) {
+			if (((y + i) >= 0) && ((y + i) <= BMAX)) {    //ha a pályán van a vizsgált mezõ 
+				if (steps[x][y + i].equals(username)) {   //ha saját lépés
+					ctr += 1;                             //akkor eggyel több saját mezõ van abban a sorban
+					if (ctr == 5) {
+						return true;                      //ha talált 5-öt, akkor leáll
+					}
+				}	
+				else {                                    //ha nem saját lépés (vagy üres), akkor nullázni kell a számlálót
+					ctr = 0;
+					if (i >= 0) {                         //a most vizsgált mezõ nem saját, tehát 
+						return false;                     //már csak max 4 foglalt lehet, nem érdemes tovább számolni
+					}
+				}
+			}
+		}
+		return false;  
+	}
+	
+	// '\' átló ellenõrzése
+	private boolean upDownFive(int x, int y) {
+		int ctr = 0;
+		for (int i = -4; i <= 4; i++) {
+			if (  ((y + i) >= 0) && ((y + i) <= BMAX) && ((x + i) >= 0) && ((x + i) <= BMAX)   ) {      //ha a pályán van a vizsgált mezõ 
+				if (steps[x + i][y + i].equals(username)) { //ha saját lépés
+					ctr += 1;                               //akkor eggyel több saját mezõ van abban a sorban
+					if (ctr == 5) {
+						return true;                        //ha talált 5-öt, akkor leáll
+					}
+				}	
+				else {                                      //ha nem saját lépés (vagy üres), akkor nullázni kell a számlálót
+					ctr = 0;
+					if (i >= 0) {                           //ha most vizsgált mezõ nem saját, akkor 
+						return false;                       //már csak max 4 foglalt lehet, nem érdemes tovább számolni
+					}
+				}
+			}
+		}
+		return false;  
+	}
+	
+	// '/' átló ellenõrzése
+	private boolean downUpFive(int x, int y) {
+		int ctr = 0;
+		for (int i = -4; i <= 4; i++) {
+			if ( ((x + i) >= 0) && ((x + i) <= BMAX) &&((y - i) >= 0) && ((y - i) <= BMAX) ) { //ha a pályán van a vizsgált mezõ 
+				if (steps[x + i][y - i].equals(username)) { //ha saját lépés
+					ctr += 1;                               //akkor eggyel több saját mezõ van abban a sorban
+					if (ctr == 5) {
+						return true;                        //ha talált 5-öt, akkor leáll
+					}
+				}	
+				else {                                      //ha nem saját lépés (vagy üres), akkor nullázni kell a számlálót
+					ctr = 0;
+					if (i >= 0) {                           //ha most vizsgált mezõ nem saját, akkor 
+						return false;                       //már csak max 4 foglalt lehet, nem érdemes tovább számolni
+					}
+				}
+			}
+		}
+		return false;  
 	}
 	
 	private void sendToServer(String msg) {
@@ -123,13 +223,9 @@ public class GameNET implements Runnable {
 	
 	//lépés
 	public void stepTo(Integer x, Integer y) {
-		if ((meNext) && (steps[x][y] == false)) {  //ha én lépek és nem foglalt a mezõ, akkor küldi el a lépést
-			sendToServer(STEP + ";" + x.toString() + y.toString());
+		if ((meNext) && (steps[x][y].equals("") )) {  //ha én lépek és üres a mezõ, csak akkor küldi el a lépést
+			sendToServer(STEP + ";" + username + ";" +  x.toString() + y.toString());
 		}
-	}
-	
-	public void registerStep(int x, int y) {
-		steps[x][y] = true;
 	}
 	
 	public void sendChat(String msg) {
