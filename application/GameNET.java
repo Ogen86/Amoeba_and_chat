@@ -7,6 +7,10 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.util.ArrayList;
+
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
+
 import static application.Constants.*;
 
 public class GameNET implements Runnable {
@@ -16,20 +20,37 @@ public class GameNET implements Runnable {
 	private BufferedReader reader;
 	private PrintWriter writer;
 	private String username;
+	private String othername;
+	private boolean inplay = false;
 	private boolean meNext = true;
-	String[][] steps = new String[BSIZE][BSIZE];
+	private boolean connected = false;
+	int[][] steps = new int[BSIZE][BSIZE];
+	
+	public boolean isInPlay() {
+		return inplay;
+	}
+	
+	public void setInPlay(boolean in) {
+		inplay = in;
+	}
 	
 	public void connect() throws Exception {
 		try {
+			System.out.println("Connecting...");
 			sock = new Socket(InetAddress.getLocalHost(), SOCKET);
 			reader = new BufferedReader(new InputStreamReader(sock.getInputStream()));
 			writer = new PrintWriter(sock.getOutputStream(), true);
 			Thread th = new Thread(this);
-			th.setDaemon(true);
+			th.setDaemon(false);
 			th.start();
+			connected = true;
 		} catch (IOException e) {
 			throw new Exception("Csatlakozási hiba:\n" + e.getMessage());
 		}
+	}
+	
+	public boolean isConnected() {
+		return connected;
 	}
 
 	@Override
@@ -39,7 +60,7 @@ public class GameNET implements Runnable {
 			try {
 				String msg = reader.readLine();
 				synchronized (this) {
-					storeMessage(msg);
+					processMessage(msg);
 					this.notifyAll();
 				}
 			}
@@ -67,16 +88,29 @@ public class GameNET implements Runnable {
 	}
 	
 	public GameNET() {
-		clearSteps();
+		try {
+			connect();
+		} catch (Exception e) {
+			Alert a = new Alert(AlertType.ERROR);
+			a.setTitle("Gomoku");
+			a.setHeaderText("Hiba a csatlakozásnál");
+			a.setContentText(e.getMessage());
+			a.showAndWait();
+			System.exit(1);
+		}
 	}
 	
-	private void clearSteps() {
+	public void startGame() {
 		for (int i = 0; i <= BMAX; i++) {
 			for (int j = 0; j <= BMAX; j++) {
-				steps[i][j] = "";
+				steps[i][j] = FREECELL;
 			}
 		}
-		
+	}
+	
+	public void stopGame() {
+		sendToServer("B;" + username);
+		inplay = false;
 	}
 
 	public String getMessage() {
@@ -85,18 +119,49 @@ public class GameNET implements Runnable {
 		return str;
 	}
 	
-	private void storeMessage(String msg) {
-		messages.add(0, msg);
+	private boolean inPlayMessage(String msg) {
+		return (msg.equals(CHAT) || msg.contentEquals(STEP) || msg.contentEquals(BREAK) || msg.contentEquals(WIN));
+	}
+	
+	private void processMessage(String msg) {
 		String[] tmp = msg.split(";");
-		if (tmp[0]  == STEP) {
+		if (tmp[0].contentEquals(ACCEPT)) {  //elfogadta a játékot
+			othername = tmp[1];           //beállítja az ellenfél nevét
+		}
+		
+		if (tmp[0].equals(STEP)) {
 			int x = Integer.parseInt(tmp[2]);
 			int y = Integer.parseInt(tmp[3]);
-			steps[x][y] = tmp[1];                //az x,y -dik elem a lépõ neve
-			if (tmp[1] == username) {            //ha saját lépés volt, akkor ellenõrizni kell a gyõzelmet
+			
+			if (tmp[1].equals(username)) {       //ha én léptem
+				steps[x][y] = OWNSTEP;
 				checkWinner(x, y);				 //ha saját gyõzelem, akkor elküldi a szervernek
 			}
-			meNext = !tmp[1].equals(username);   //ha a lépõ neve nem egyenlõ a saját névvel, akkor az
-		}										 //ellenfél lépett, tehát én jövök	
+			else {
+				steps[x][y] = OTHERSTEP;
+			}
+			
+			meNext = (steps[x][y] == OTHERSTEP); //ha a másik lépett, akkor én jövök
+		}										 //ellenfél lépett, tehát én jövök
+		
+		if (tmp[0].contentEquals(OK)) {          //ha a szerver elfogadta a felhasználónevet
+			username = tmp[1];					 //ez lesz a felhasználónév
+		}
+		
+		if (inplay) {                           //ha játékban van: csak chat/lépés/break/win üzenetet kezel
+			if (inPlayMessage(tmp[0])) {        //és játék közbeni üzenetet kap
+				messages.add(0, msg);           //akkor eltárolja
+			}	
+		}
+		else {                                 //ha nincs játékban, akkor minden mást, csak chat/break/step-et nem
+			if (!inPlayMessage(tmp[0])) {      //nem játék közbeni üzenetet kap
+				messages.add(0, msg);          //akkor tárolja el
+			}	
+		}
+	}
+	
+	public String getOtherName() {
+		return othername;
 	}
 	
 	private void checkWinner(int x, int y) {
@@ -110,7 +175,7 @@ public class GameNET implements Runnable {
 		int ctr = 0;
 		for (int i = -4; i <= 4; i++) {
 			if (((x + i) >= 0) && ((x + i) <= BMAX)) {    //ha a pályán van a vizsgált mezõ 
-				if (steps[x + i][y].equals(username)) {   //ha saját lépés
+				if (steps[x + i][y] == OWNSTEP) {         //ha saját lépés
 					ctr += 1;                             //akkor eggyel több saját mezõ van abban a sorban
 					if (ctr == 5) {
 						return true;                      //ha talált 5-öt, akkor leáll
@@ -132,7 +197,7 @@ public class GameNET implements Runnable {
 		int ctr = 0;
 		for (int i = -4; i <= 4; i++) {
 			if (((y + i) >= 0) && ((y + i) <= BMAX)) {    //ha a pályán van a vizsgált mezõ 
-				if (steps[x][y + i].equals(username)) {   //ha saját lépés
+				if (steps[x][y + i] == OWNSTEP) {   //ha saját lépés
 					ctr += 1;                             //akkor eggyel több saját mezõ van abban a sorban
 					if (ctr == 5) {
 						return true;                      //ha talált 5-öt, akkor leáll
@@ -154,7 +219,7 @@ public class GameNET implements Runnable {
 		int ctr = 0;
 		for (int i = -4; i <= 4; i++) {
 			if (  ((y + i) >= 0) && ((y + i) <= BMAX) && ((x + i) >= 0) && ((x + i) <= BMAX)   ) {      //ha a pályán van a vizsgált mezõ 
-				if (steps[x + i][y + i].equals(username)) { //ha saját lépés
+				if (steps[x + i][y + i] == OWNSTEP) { //ha saját lépés
 					ctr += 1;                               //akkor eggyel több saját mezõ van abban a sorban
 					if (ctr == 5) {
 						return true;                        //ha talált 5-öt, akkor leáll
@@ -176,9 +241,10 @@ public class GameNET implements Runnable {
 		int ctr = 0;
 		for (int i = -4; i <= 4; i++) {
 			if ( ((x + i) >= 0) && ((x + i) <= BMAX) &&((y - i) >= 0) && ((y - i) <= BMAX) ) { //ha a pályán van a vizsgált mezõ 
-				if (steps[x + i][y - i].equals(username)) { //ha saját lépés
+				if (steps[x + i][y - i] == OWNSTEP) { //ha saját lépés
 					ctr += 1;                               //akkor eggyel több saját mezõ van abban a sorban
 					if (ctr == 5) {
+						System.out.println("downUpFive()");
 						return true;                        //ha talált 5-öt, akkor leáll
 					}
 				}	
@@ -198,43 +264,48 @@ public class GameNET implements Runnable {
 		writer.flush();
 	}
 	
-	
+	public String getUsername() {
+		return username;
+	}
+
 	// belépés a szerverre a megadot névvel (a kapcsolat már megvan)
-	
-	public void logIn(String name) {
-		this.username = name;
-		sendToServer(JOIN + ";" + username);
+	public void join(String name, String password) {
+		sendToServer(JOIN + ";" + name + ";" + password);
 	}
 	
 	//meghívás játékra: name = akit meghívtak
 	public void playWith(String name) {
-		sendToServer(PLAY + ";" + username);
+		sendToServer(PLAY + ";" + name);
 	}
 	
 	//meghívás elfogadása
 	public void acceptPlay(String name) {
-		sendToServer(ACCEPT + ";" + username);
+		sendToServer(ACCEPT + ";" + name);
 	}
 	
 	//meghívás elutasítása
 	public void declinePlay(String name) {
-		sendToServer(DECLINE + ";" + username);
+		sendToServer(DECLINE + ";" + name);
 	}
 	
 	//lépés
 	public void stepTo(Integer x, Integer y) {
-		if ((meNext) && (steps[x][y].equals("") )) {  //ha én lépek és üres a mezõ, csak akkor küldi el a lépést
-			sendToServer(STEP + ";" + username + ";" +  x.toString() + y.toString());
+		if ((meNext) && (steps[x][y] == FREECELL )) {  //ha én lépek és üres a mezõ, csak akkor küldi el a lépést
+			sendToServer(STEP + ";" + username + ";" +  x.toString() + ";" + y.toString());
 		}
 	}
 	
 	public void sendChat(String msg) {
-		sendToServer(CHAT + username + ";" + msg);
+		sendToServer(CHAT + ";" + username + ";" + msg);
 	}
 	
 	//játék abbahagyása
 	public void breakGame() {
 		sendToServer(BREAK);
+	}
+	
+	public void register(String name, String password) {
+		sendToServer(REGISTER + ";" + name + ";" + password);
 	}
 	
 }

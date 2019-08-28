@@ -12,8 +12,6 @@ public class Main extends Application {
 	private Stage stage;
 	private AnchorPane pMain;
 	
-	private GameNET gnet;
-	
 	@Override
 	public void start(Stage stage) {
 		
@@ -24,14 +22,16 @@ public class Main extends Application {
 			FXMLLoader loader = new FXMLLoader(Main.class.getResource("GameWindow.fxml"));
 			pMain = (AnchorPane) loader.load();
 			GameController gcont = loader.getController();
-			gnet = new GameNET();
-			gcont.setGnet(gnet);
 			gcont.go();
 			Scene scene = new Scene(pMain);
 			stage.setScene(scene);
+			stage.setOnCloseRequest(e -> {
+				System.exit(0);
+			});
 			stage.show();
 		} catch(Exception e) {
 			e.printStackTrace();
+			System.exit(0);
 		}
 	}
 	

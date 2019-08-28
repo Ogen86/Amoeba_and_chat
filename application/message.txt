@@ -1,0 +1,15 @@
+O;Tesztelõ
+L;Luke;Leia;Han Solo;Yoda;Chewbacca;
+A;Han Solo
+S;Tesztelõ;12;8
+C;Tesztelõ;Na, ehhez mit szólsz?
+S;Han Solo;11;8
+S;Tesztelõ;11;9
+S;Han Solo;10;9
+S;Tesztelõ;9;11
+S;Han Solo;9;10
+S;Tesztelõ;8;12
+C;Han Solo;Tartsd a távolságot, de ne vegyék észre, hogy tartod a távolságot!
+S;Han Solo;8;11
+B;Han Solo
+S;Tesztelõ;9;13
