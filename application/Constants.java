@@ -24,4 +24,6 @@ public final  class Constants {
 	public static int OWNSTEP   =  1;   //a mezõn saját pötty van
 	public static int OTHERSTEP = -1;   //a mezõn az ellenfél pöttye van
 	public static int FREECELL  =  0;   //a mezõn nincs pötty
+	
+	public static boolean INPLAY = true;
 }

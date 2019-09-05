@@ -1,11 +1,15 @@
 package application;
 
+import static application.Constants.*;
+
 import java.io.IOException;
 import java.net.URL;
 import java.util.Optional;
 import java.util.ResourceBundle;
 
 import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
@@ -14,11 +18,10 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
-import javafx.scene.input.MouseButton;
-import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
+import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextArea;
@@ -29,8 +32,6 @@ import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
-
-import static application.Constants.*;
 
 public class GameController implements Initializable{
 	
@@ -54,18 +55,25 @@ public class GameController implements Initializable{
 			TextField tfUzenet;
 			@FXML
 			TextArea taSzoveg;
-			@FXML
-			Button btnStopGame;
+
 	
 	@FXML
 	AnchorPane acpPlayers;
 		@FXML
 		ListView<String> lvPlayers;
+			@FXML
+			MenuItem citmInvite;
 	
 	@FXML
 	MenuItem itmLogin;
 	@FXML
 	MenuItem itmExit;
+	
+	@FXML
+	Menu mnuGame;
+		@FXML
+		MenuItem itmStopGame;
+	
 	
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
@@ -77,13 +85,13 @@ public class GameController implements Initializable{
 		showGameArea(false);
 		acpPlayers.setVisible(false);  //itt még a playerlist sem látszik
 		
-		lvPlayers.setOnMouseClicked(e -> {
-			if ((e.getButton() == MouseButton.PRIMARY) && (e.getClickCount() == 2)) {
-				String name = lvPlayers.getSelectionModel().getSelectedItem();
-				if (name != null) {
+		citmInvite.setOnAction(e -> {
+			String name = lvPlayers.getSelectionModel().getSelectedItem();
+			if (name != null) {
+				if (!name.equals(gnet.getUsername())) {
 					selectPlayer(name);
 				}
-			} 
+			}
 		});
 		
 		itmLogin.setOnAction(e -> {
@@ -97,10 +105,12 @@ public class GameController implements Initializable{
 		// ez akkor fut, amikor ENTER-t ütnek a beviteli mezõn
 		tfUzenet.setOnAction(e -> {
 			gnet.sendChat(tfUzenet.getText());
+			tfUzenet.setText("");
 		});
 		
-		btnStopGame.setOnAction(e -> {
+		itmStopGame.setOnAction(e -> {
 			breakGame();
+			mnuGame.setDisable(true);
 		});
 		
 		pnlBoard.setOnMouseClicked(e -> {
@@ -109,7 +119,16 @@ public class GameController implements Initializable{
 			y = (int) (e.getY() / CSIZE);		
 			gnet.stepTo(x, y);
 		});
-	
+		
+		
+		
+		lvPlayers.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<String>(){
+			@Override
+			public void changed(ObservableValue<? extends String> observable, String oldValue, String newValue) {
+				boolean ize = newValue.contentEquals("") || (newValue == null) || newValue.contentEquals(gnet.getUsername());
+				citmInvite.setDisable(ize);
+			}
+        });
 	}
 	
 	private void showGameArea(boolean visible) {
@@ -177,12 +196,17 @@ public class GameController implements Initializable{
 		itmLogin.setDisable(true);
 	}
 	
-	private void showRefuseName(String name) {
-		showError(name, "A név nem engedélyezett");
+	private void showRefuseName(String message) {
+		showError("Hiba a belépésnél", message);
+	}
+	
+	private void acceptGame(String name) {
+		gnet.acceptPlay(name);
 	}
 
 	private void startGame(String name) {
 		resetBoard();
+		mnuGame.setDisable(false);
 		lblOther.setText("");
 		showGameArea(true);
 		gnet.setInPlay(true);
@@ -194,7 +218,7 @@ public class GameController implements Initializable{
 	
 	private void showError(String title, String text) {
 		Alert a = new Alert(AlertType.ERROR);
-		a.setTitle("Gomoku");
+		a.setTitle("Gomoku - " + gnet.getUsername());
 		a.setHeaderText(title);
 		a.setContentText(text);
 		a.showAndWait();
@@ -202,12 +226,12 @@ public class GameController implements Initializable{
 	
 	private void wantPlay(String name) {
 		Alert a = new Alert(AlertType.CONFIRMATION);
-		a.setTitle("Gomoku");
+		a.setTitle("Gomoku - " + gnet.getUsername());
 		a.setHeaderText(name + " meghívott játszani.");
 		a.setContentText("Elfogadod?");
 		Optional<ButtonType> res = a.showAndWait();
 		if (res.get() == ButtonType.OK) {
-			startGame(name);
+			acceptGame(name);
 		}
 		if (res.get() == ButtonType.CANCEL) {
 			gnet.declinePlay(name);
@@ -217,6 +241,7 @@ public class GameController implements Initializable{
 	private void stopGame() {
 		gnet.stopGame();
 		showGameArea(false);
+		mnuGame.setDisable(true);
 	}
 	
 	private void breakGame() {
@@ -243,23 +268,25 @@ public class GameController implements Initializable{
 		if (name.equals(gnet.getUsername())) {     //ha én léptem
 			img = imgRedDot;
 			lblOther.setTextFill(Color.GREEN);
-			lblOther.setText(gnet.getOtherName()); //az ellenfelet írja ki zöldben
+			lblOther.setText(gnet.getOtherName() + " lép"); //az ellenfelet írja ki zöldben
 		}
 		else {
 			lblOther.setTextFill(Color.RED);
-			lblOther.setText(gnet.getUsername());  //a másik lépett -> én következem
+			lblOther.setText("Te lépsz!");  //a másik lépett -> én következem
 			img = imgGreenDot;
 		}
 		gc.drawImage(img, x * CSIZE, y * CSIZE, CSIZE, CSIZE);
 	}
 	
-	public void showWinner(String name) {
+	public void showWinnerAndCloseGame(String name) {
 		Alert a = new Alert(AlertType.INFORMATION);
 		a.setTitle("Gomoku");
 		a.setHeaderText(name + " gyõzött");
 		a.setContentText("Vége a játéknak");
 		a.showAndWait();
+		gnet.setInPlay(false);
 		showGameArea(false);
+		mnuGame.setDisable(true);
 	}
 	
 	public void go() {
@@ -292,7 +319,6 @@ public class GameController implements Initializable{
 										break;
 									case OK:
 										showPlayers();
-										gnet.sendChat("semmi...");
 										break;
 									case NOTOK:
 										showRefuseName(valami[1]);
@@ -310,7 +336,7 @@ public class GameController implements Initializable{
 										showStep(valami[1], Integer.parseInt(valami[2]), Integer.parseInt(valami[3]));
 										break;
 									case WIN:
-										showWinner(valami[1]);
+										showWinnerAndCloseGame(valami[1]);
 										break;
 									case BREAK:
 										showBreakAndStop(valami[1]);

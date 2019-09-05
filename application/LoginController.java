@@ -51,7 +51,11 @@ public class LoginController implements Initializable {
 	}
 	
 	private void register() {
-		gnet.register(tfUsername.getText(), pfPassword.getText());
+		try {
+			gnet.register(tfUsername.getText(), pfPassword.getText());
+		} finally {
+			closeMe();
+		}
 	}
 	
 	private void sendAndClose() {

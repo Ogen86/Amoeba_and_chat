@@ -1,5 +1,7 @@
 package application;
 
+import static application.Constants.*;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -10,8 +12,6 @@ import java.util.ArrayList;
 
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
-
-import static application.Constants.*;
 
 public class GameNET implements Runnable {
 	
@@ -32,11 +32,11 @@ public class GameNET implements Runnable {
 	
 	public void setInPlay(boolean in) {
 		inplay = in;
+		meNext = true;
 	}
 	
 	public void connect() throws Exception {
 		try {
-			System.out.println("Connecting...");
 			sock = new Socket(InetAddress.getLocalHost(), SOCKET);
 			reader = new BufferedReader(new InputStreamReader(sock.getInputStream()));
 			writer = new PrintWriter(sock.getOutputStream(), true);
@@ -144,10 +144,6 @@ public class GameNET implements Runnable {
 			meNext = (steps[x][y] == OTHERSTEP); //ha a másik lépett, akkor én jövök
 		}										 //ellenfél lépett, tehát én jövök
 		
-		if (tmp[0].contentEquals(OK)) {          //ha a szerver elfogadta a felhasználónevet
-			username = tmp[1];					 //ez lesz a felhasználónév
-		}
-		
 		if (inplay) {                           //ha játékban van: csak chat/lépés/break/win üzenetet kezel
 			if (inPlayMessage(tmp[0])) {        //és játék közbeni üzenetet kap
 				messages.add(0, msg);           //akkor eltárolja
@@ -244,7 +240,6 @@ public class GameNET implements Runnable {
 				if (steps[x + i][y - i] == OWNSTEP) { //ha saját lépés
 					ctr += 1;                               //akkor eggyel több saját mezõ van abban a sorban
 					if (ctr == 5) {
-						System.out.println("downUpFive()");
 						return true;                        //ha talált 5-öt, akkor leáll
 					}
 				}	
@@ -271,6 +266,7 @@ public class GameNET implements Runnable {
 	// belépés a szerverre a megadot névvel (a kapcsolat már megvan)
 	public void join(String name, String password) {
 		sendToServer(JOIN + ";" + name + ";" + password);
+		username = name;
 	}
 	
 	//meghívás játékra: name = akit meghívtak
@@ -306,6 +302,7 @@ public class GameNET implements Runnable {
 	
 	public void register(String name, String password) {
 		sendToServer(REGISTER + ";" + name + ";" + password);
+		username = name;
 	}
 	
 }
