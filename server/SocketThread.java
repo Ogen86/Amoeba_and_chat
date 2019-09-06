@@ -69,11 +69,18 @@ public class SocketThread {
 							break;
 						}
 					} catch (IOException e) {
-						gameadmin.deleteGamer(gamername);
-						gameadmin.sendGamerList();
+						synchronized (gameadmin) {
+							if (!gameadmin.notPlaying(gamername)) {    //ha játszik a gamer
+								sendMessage(BREAK + ";" + gamername, gameadmin.getPartnerSocket(gamername));  //szólni kell az ellenfélnek a kliens helyett
+								gameadmin.delPartner(gameadmin.getPartnerName(gamername));
+							}
+							gameadmin.deleteGamer(gamername);          //törölni a gamert
+							gameadmin.sendGamerList();                 //kiküldeni a listát
+						}
 						break;
 					}
-				}
+				} //while(true)
+				
 				try {
 					sock.close();
 				} catch (IOException e) {
@@ -85,9 +92,9 @@ public class SocketThread {
 		th.start();
 	}
 	
-	private void breakGame(String name) {
+	private void breakGame(String name) {  //csak a kliensrõl küldött üzenetnél!
 		sendMessage(BREAK + ";" + name, gameadmin.getPartnerSocket(gamername));
-		gameadmin.delPartner(name);
+		gameadmin.delPartner(gameadmin.getPartnerName(gamername));
 		gameadmin.delPartner(gamername);
 	}
 	
@@ -166,6 +173,7 @@ public class SocketThread {
 			pwr.println(msg);
 			pwr.flush();
 		} catch (IOException e) {
+			System.out.println(gamername);
 			e.printStackTrace();
 		}
 	}

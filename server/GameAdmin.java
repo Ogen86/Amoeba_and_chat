@@ -24,6 +24,7 @@ public class GameAdmin {
 			partnersocket = null;
 			partnername = null;
 		}
+		
 		public void setPartnername(String partnername) {
 			this.partnername = partnername;
 		}

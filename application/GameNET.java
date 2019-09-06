@@ -120,7 +120,10 @@ public class GameNET implements Runnable {
 	}
 	
 	private boolean inPlayMessage(String msg) {
-		return (msg.equals(CHAT) || msg.contentEquals(STEP) || msg.contentEquals(BREAK) || msg.contentEquals(WIN));
+		return (   msg.equals(CHAT) 
+				|| msg.equals(STEP) 
+				|| msg.equals(BREAK) 
+				|| msg.equals(WIN));  //játék közben ezt is kell fogadni
 	}
 	
 	private void processMessage(String msg) {
@@ -145,7 +148,7 @@ public class GameNET implements Runnable {
 		}										 //ellenfél lépett, tehát én jövök
 		
 		if (inplay) {                           //ha játékban van: csak chat/lépés/break/win üzenetet kezel
-			if (inPlayMessage(tmp[0])) {        //és játék közbeni üzenetet kap
+			if (inPlayMessage(tmp[0]) || tmp[0].equals(LIST)) {        //és játék közbeni üzenetet vagy LISTát kap
 				messages.add(0, msg);           //akkor eltárolja
 			}	
 		}

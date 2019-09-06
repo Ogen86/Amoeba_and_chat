@@ -110,7 +110,6 @@ public class GameController implements Initializable{
 		
 		itmStopGame.setOnAction(e -> {
 			breakGame();
-			mnuGame.setDisable(true);
 		});
 		
 		pnlBoard.setOnMouseClicked(e -> {
@@ -120,20 +119,21 @@ public class GameController implements Initializable{
 			gnet.stepTo(x, y);
 		});
 		
-		
-		
 		lvPlayers.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<String>(){
 			@Override
 			public void changed(ObservableValue<? extends String> observable, String oldValue, String newValue) {
-				boolean ize = newValue.contentEquals("") || (newValue == null) || newValue.contentEquals(gnet.getUsername());
-				citmInvite.setDisable(ize);
+				if (newValue != null) {
+					citmInvite.setDisable(newValue.equals("") || newValue.equals(gnet.getUsername()));
+				}
 			}
         });
+
 	}
 	
 	private void showGameArea(boolean visible) {
 		scpGame.setVisible(visible);
 		acpPlayers.setVisible(!visible);
+		mnuGame.setDisable(!visible);
 	}
 	
 	private void selectPlayer(String name) {
@@ -169,7 +169,7 @@ public class GameController implements Initializable{
 	
 	private void resetBoard() {
 		gc.setFill(Color.WHITE);
-		gc.fillRect(0, 0, 400, 400);
+		gc.fillRect(0, 0, BSIZE * BSIZE, BSIZE * BSIZE);
 		gc.setStroke(Color.GRAY);
 		gc.setLineWidth(0.5);
 		for (int i = 0; i <= BSIZE; i++) { //azért <= mert N mezõhöz N + 1 vonal kell
@@ -187,6 +187,7 @@ public class GameController implements Initializable{
 		for (int i = 1; i < msg.length; i++) {
 			lvPlayers.getItems().add(msg[i]);
 		}
+
 	}
 	
 	private void showPlayers() {
@@ -206,7 +207,6 @@ public class GameController implements Initializable{
 
 	private void startGame(String name) {
 		resetBoard();
-		mnuGame.setDisable(false);
 		lblOther.setText("");
 		showGameArea(true);
 		gnet.setInPlay(true);
@@ -238,12 +238,6 @@ public class GameController implements Initializable{
 		}
 	}
 	
-	private void stopGame() {
-		gnet.stopGame();
-		showGameArea(false);
-		mnuGame.setDisable(true);
-	}
-	
 	private void breakGame() {
 		Alert a = new Alert(AlertType.CONFIRMATION);
 		a.setTitle("Gomoku");
@@ -251,8 +245,8 @@ public class GameController implements Initializable{
 		a.setContentText("Biztos, hogy befejezed?");
 		Optional<ButtonType> res = a.showAndWait();
 		if (res.get() == ButtonType.OK) {
-			stopGame();
-		}
+			gnet.stopGame();
+			showGameArea(false);		}
 	}
 	
 	private void showBreakAndStop(String name){
@@ -260,7 +254,8 @@ public class GameController implements Initializable{
 		a.setTitle("Gomoku");
 		a.setHeaderText(name + " megszakította a játékot");
 		a.showAndWait();
-		stopGame();
+		showGameArea(false);	
+		gnet.setInPlay(false);
 	}
 	
 	private void showStep(String name, int x, int y) {
@@ -286,7 +281,6 @@ public class GameController implements Initializable{
 		a.showAndWait();
 		gnet.setInPlay(false);
 		showGameArea(false);
-		mnuGame.setDisable(true);
 	}
 	
 	public void go() {
